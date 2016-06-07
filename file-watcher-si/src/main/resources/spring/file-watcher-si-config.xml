@@ -1,0 +1,82 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<beans xmlns="http://www.springframework.org/schema/beans"
+	xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:context="http://www.springframework.org/schema/context"
+	xmlns:int-file="http://www.springframework.org/schema/integration/file"
+	xmlns:int="http://www.springframework.org/schema/integration"
+	xmlns:int-stream="http://www.springframework.org/schema/integration/stream"
+	xmlns:task="http://www.springframework.org/schema/task"
+	xsi:schemaLocation="http://www.springframework.org/schema/integration/stream http://www.springframework.org/schema/integration/stream/spring-integration-stream.xsd
+		http://www.springframework.org/schema/task http://www.springframework.org/schema/task/spring-task.xsd
+		http://www.springframework.org/schema/beans http://www.springframework.org/schema/beans/spring-beans.xsd
+		http://www.springframework.org/schema/context http://www.springframework.org/schema/context/spring-context.xsd
+		http://www.springframework.org/schema/integration/file http://www.springframework.org/schema/integration/file/spring-integration-file.xsd
+		http://www.springframework.org/schema/integration http://www.springframework.org/schema/integration/spring-integration.xsd">
+
+	<context:property-placeholder location="classpath:/application.properties" />
+	<context:component-scan base-package="com.example" />
+
+	<int:channel id="strings">
+		<int:queue />
+	</int:channel>
+
+
+	<int:channel id="filesIn">
+		<int:queue />
+	</int:channel>
+
+	<int:channel id="jsonIn">
+		<int:queue />
+	</int:channel>
+
+
+	<!-- <bean id="wsScanner" -->
+	<!-- class="org.springframework.integration.file.WatchServiceDirectoryScanner"> -->
+	<!-- <constructor-arg value="/home/neo/Downloads/Incidents_Dataset/"/> -->
+	<!-- </bean> -->
+
+	<int-file:inbound-channel-adapter
+		directory="${input.directory}" scanner="wsScanner" id="filesInEnd"
+		auto-startup="true">
+		<int:poller id="poller" fixed-rate="100" task-executor="executor" />
+	</int-file:inbound-channel-adapter>
+
+	<bean id="wsScanner"
+		class="org.springframework.integration.file.WatchServiceDirectoryScanner">
+		<constructor-arg value="${input.directory}" />
+		<property name="autoStartup" value="true"></property>
+		<property name="filter" ref="iniFilter"></property>
+	</bean>
+
+	<bean id="iniFilter"
+		class="org.springframework.integration.file.filters.SimplePatternFileListFilter">
+		<constructor-arg value="*.json" />
+	</bean>
+
+	<int:service-activator input-channel="filesInEnd"
+		output-channel="filesIn">
+		<bean class="com.example.FileProcessor" />
+	</int:service-activator>
+
+	<task:executor id="executor" pool-size="10" />
+
+
+	<!-- default poller -->
+	<int:poller default="true" fixed-rate="1000"></int:poller>
+
+	<int-file:file-to-string-transformer
+		input-channel="filesIn" output-channel="strings" />
+<!-- 	<int-stream:stdout-channel-adapter -->
+<!-- 		channel="strings" append-newline="true" /> -->
+
+
+
+	<int:object-to-json-transformer
+		input-channel="strings" output-channel="jsonIn"></int:object-to-json-transformer>
+
+
+	<int-file:outbound-channel-adapter
+		auto-create-directory="true" channel="jsonIn" directory="${output.directory}"
+		filename-generator-expression="new java.text.SimpleDateFormat('yyyyMMddHHmmssSSS').format(new java.util.Date()) + '.' + headers['file_name']"></int-file:outbound-channel-adapter>
+
+
+</beans>
