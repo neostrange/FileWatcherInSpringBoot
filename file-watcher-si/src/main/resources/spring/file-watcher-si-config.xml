@@ -63,20 +63,32 @@
 	<!-- default poller -->
 	<int:poller default="true" fixed-rate="1000"></int:poller>
 
-	<int-file:file-to-string-transformer
+<!-- 	<int-file:file-to-string-transformer -->
+<!-- 		input-channel="filesIn" output-channel="strings" /> -->
+	<!-- <int-stream:stdout-channel-adapter -->
+	<!-- channel="strings" append-newline="true" /> -->
+
+
+
+<!-- 	<int:object-to-json-transformer -->
+<!-- 		input-channel="strings" output-channel="jsonIn" /> -->
+
+	<int:transformer ref="removeEscSeq" method="transform"
 		input-channel="filesIn" output-channel="strings" />
-<!-- 	<int-stream:stdout-channel-adapter -->
-<!-- 		channel="strings" append-newline="true" /> -->
 
+	<bean id="removeEscSeq" class="com.example.MyTransformer" />
 
-
-	<int:object-to-json-transformer
-		input-channel="strings" output-channel="jsonIn"></int:object-to-json-transformer>
+	<!-- <int-stream:stdout-channel-adapter -->
+	<!-- channel="strings" append-newline="true" /> -->
 
 
 	<int-file:outbound-channel-adapter
-		auto-create-directory="true" channel="jsonIn" directory="${output.directory}"
-		filename-generator-expression="new java.text.SimpleDateFormat('yyyyMMddHHmmssSSS').format(new java.util.Date()) + '.' + headers['file_name']"></int-file:outbound-channel-adapter>
+		auto-create-directory="true" channel="strings" directory="${output.directory}"
+		filename-generator-expression="new java.text.SimpleDateFormat('yyyyMMddHHmmssSSS').
+		format(new java.util.Date()) + '.json'"   />
+
+
+
 
 
 </beans>
