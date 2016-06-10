@@ -16,29 +16,8 @@
 	<context:property-placeholder location="classpath:/application.properties" />
 	<context:component-scan base-package="com.example" />
 
-	<int:channel id="strings">
-		<int:queue />
-	</int:channel>
-
-	<int:channel id="filesIn">
-		<int:queue />
-	</int:channel>
-
-	<int:channel id="jsonIn">
-		<int:queue />
-	</int:channel>
 
 
-	<!-- <bean id="wsScanner" -->
-	<!-- class="org.springframework.integration.file.WatchServiceDirectoryScanner"> -->
-	<!-- <constructor-arg value="/home/neo/Downloads/Incidents_Dataset/"/> -->
-	<!-- </bean> -->
-
-	<int-file:inbound-channel-adapter
-		directory="${input.directory}" scanner="wsScanner" id="filesInEnd"
-		auto-startup="true">
-		<int:poller id="poller" fixed-rate="1000" task-executor="executor" />
-	</int-file:inbound-channel-adapter>
 
 	<bean id="wsScanner"
 		class="org.springframework.integration.file.WatchServiceDirectoryScanner">
@@ -53,30 +32,68 @@
 		class="org.springframework.integration.file.filters.CompositeFileListFilter">
 		<constructor-arg>
 			<list>
-<!-- 				<bean -->
-<!-- 					class="org.springframework.integration.file.filters.AcceptOnceFileListFilter" /> -->
+				<bean
+					class="org.springframework.integration.file.filters.AcceptOnceFileListFilter" />
 				<bean
 					class="org.springframework.integration.file.filters.SimplePatternFileListFilter">
 					<constructor-arg value="${filter}" />
 				</bean>
-				<bean
-					class="org.springframework.integration.file.filters.LastModifiedFileListFilter">
-					<property name="age" value="${lastModifiedTime.value}" />
-				</bean>
+				<!-- <bean -->
+				<!-- class="org.springframework.integration.file.filters.LastModifiedFileListFilter"> -->
+				<!-- <property name="age" value="${lastModifiedTime.value}" /> -->
+				<!-- </bean> -->
 			</list>
 		</constructor-arg>
 	</bean>
 
 
-<int:filter input-channel="filesInEnd" ref="selector" output-channel="filesIn"/>
 
- <bean id="selector" class="com.example.MessageSelectorImpl"/>
- 
- 
-<!-- 	<int:service-activator input-channel="filesInEnd" -->
-<!-- 		output-channel="filesIn"> -->
-<!-- 		<bean class="com.example.FileProcessor" /> -->
-<!-- 	</int:service-activator> -->
+	<int:channel id="strings">
+		<int:queue />
+	</int:channel>
+
+	<int:channel id="filesIn">
+		<int:queue />
+	</int:channel>
+
+	<int:channel id="jsonIn">
+		<int:queue />
+	</int:channel>
+
+	<int:channel id="filesWithDelayHeaders">
+		<int:queue />
+	</int:channel>
+
+	<int:channel id="filteredFiles">
+		<int:queue />
+	</int:channel>
+
+
+	<int-file:inbound-channel-adapter
+		directory="${input.directory}" scanner="wsScanner" id="filesInEnd"
+		auto-startup="true">
+		<int:poller id="poller" fixed-rate="1000" task-executor="executor" />
+	</int-file:inbound-channel-adapter>
+
+
+	<int:transformer id="delayHeader" input-channel="filesInEnd"
+		output-channel="filesIn" ref="emptyFileIdentifier" />
+	<bean id="emptyFileIdentifier" class="com.example.EmptyFileIdentifier"></bean>
+
+	<int:delayer id="delayer" input-channel="filesIn"
+		default-delay="20000" output-channel="filesWithDelayHeaders"
+		delay-header-name="delay" />
+
+	<int:filter input-channel="filesWithDelayHeaders" ref="selector"
+		output-channel="filteredFiles" />
+
+	<bean id="selector" class="com.example.MessageSelectorImpl" />
+
+
+	<!-- <int:service-activator input-channel="filesInEnd" -->
+	<!-- output-channel="filesIn"> -->
+	<!-- <bean class="com.example.FileProcessor" /> -->
+	<!-- </int:service-activator> -->
 
 	<task:executor id="executor" pool-size="10" />
 
@@ -95,7 +112,7 @@
 	<!-- input-channel="strings" output-channel="jsonIn" /> -->
 
 	<int:transformer ref="removeEscSeq" method="transform"
-		input-channel="filesIn" output-channel="strings" />
+		input-channel="filteredFiles" output-channel="strings" />
 
 	<bean id="removeEscSeq" class="com.example.MyTransformer" />
 
