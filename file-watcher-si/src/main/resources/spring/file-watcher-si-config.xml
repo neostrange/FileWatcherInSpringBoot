@@ -78,7 +78,7 @@
 
 	<int:transformer id="delayHeader" input-channel="filesInEnd"
 		output-channel="filesIn" ref="emptyFileIdentifier" />
-	<bean id="emptyFileIdentifier" class="com.example.EmptyFileIdentifier"></bean>
+	<bean id="emptyFileIdentifier" class="com.example.EmptyFileIdentifier" />
 
 	<int:delayer id="delayer" input-channel="filesIn"
 		default-delay="20000" output-channel="filesWithDelayHeaders"
@@ -89,51 +89,42 @@
 
 	<bean id="selector" class="com.example.MessageSelectorImpl" />
 
-
-	<!-- <int:service-activator input-channel="filesInEnd" -->
-	<!-- output-channel="filesIn"> -->
-	<!-- <bean class="com.example.FileProcessor" /> -->
-	<!-- </int:service-activator> -->
-
 	<task:executor id="executor" pool-size="10" />
 
 
 	<!-- default poller -->
 	<int:poller default="true" fixed-rate="1000"></int:poller>
 
-	<!-- <int-file:file-to-string-transformer -->
-	<!-- input-channel="filesIn" output-channel="strings" /> -->
-	<!-- <int-stream:stdout-channel-adapter -->
-	<!-- channel="strings" append-newline="true" /> -->
 
-
-
-	<!-- <int:object-to-json-transformer -->
-	<!-- input-channel="strings" output-channel="jsonIn" /> -->
 
 	<int:transformer ref="removeEscSeq" method="transform"
 		input-channel="filteredFiles" output-channel="strings" />
 
 	<bean id="removeEscSeq" class="com.example.MyTransformer" />
 
-	<!-- <int-stream:stdout-channel-adapter -->
-	<!-- channel="strings" append-newline="true" /> -->
+
+	<!-- <int-file:outbound-channel-adapter -->
+	<!-- auto-create-directory="true" directory="${output.directory}" -->
+	<!-- filename-generator-expression="new java.text.SimpleDateFormat('yyyyMMddHHmmssSSS'). -->
+	<!-- format(new java.util.Date()) + '.json'" -->
+	<!-- channel="strings" /> -->
 
 
-	<int-file:outbound-channel-adapter
-		auto-create-directory="true" directory="${output.directory}"
-		filename-generator-expression="new java.text.SimpleDateFormat('yyyyMMddHHmmssSSS').
-		format(new java.util.Date()) + '.json'"
-		channel="strings" />
+	<bean id="sslContextSupport"
+		class="org.springframework.integration.ip.tcp.connection.DefaultTcpSSLContextSupport">
+		<constructor-arg value="${client.keystore}" />
+		<constructor-arg value="${client.truststore}" />
+		<constructor-arg value="admin321" />
+		<constructor-arg value="admin321" />
+	</bean>
 
 
+	<int-ip:tcp-connection-factory id="client"
+		type="client" ssl-context-support="sslContextSupport" host="115.186.132.18" port="5170" single-use="true"
+		so-timeout="10000" />
 
-	<!-- <int-ip:tcp-connection-factory id="client" -->
-	<!-- type="client" host="localhost" port="1234" single-use="true" -->
-	<!-- so-timeout="10000" /> -->
-
-	<!-- <int-ip:tcp-outbound-channel-adapter -->
-	<!-- id="outboundClient" channel="logger" connection-factory="client" /> -->
+	<int-ip:tcp-outbound-channel-adapter
+		id="outboundClient" channel="strings" connection-factory="client" />
 
 
 
