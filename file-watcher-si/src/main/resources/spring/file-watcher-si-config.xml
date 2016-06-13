@@ -120,7 +120,7 @@
 
 
 	<int-ip:tcp-connection-factory id="client"
-		type="client" ssl-context-support="sslContextSupport" host="115.186.132.18" port="5170" single-use="true"
+		type="client" ssl-context-support="sslContextSupport" host="localhost" port="1234" single-use="true"
 		so-timeout="10000" />
 
 	<int-ip:tcp-outbound-channel-adapter
